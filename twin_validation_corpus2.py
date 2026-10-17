@@ -2,9 +2,12 @@
 # contraction-aware tokenization. Converges with binding_gate.py: Chouchay-class
 # confabulations caught; legitimate speech passes. See commit message.
 # INN-130 prototype v2: false-quarantine rate, contractions handled.
+import os
 import re
 
-lex = set(l.strip().lower() for l in open('/tmp/words_alpha.txt'))
+_HERE = os.path.dirname(os.path.abspath(__file__))
+lex = set(l.strip().lower()
+          for l in open(os.path.join(_HERE, "lexicon", "words_alpha.txt")))
 proper = """dakota higgins gemini gronk chatgpt muse linear meta anthropic
 openai deepmind claude tiktok inn crucible chouchay touche
 demis hassabis wang friedman superintelligence control reversed

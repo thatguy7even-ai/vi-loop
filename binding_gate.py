@@ -1,12 +1,15 @@
 """VI talk-to-text loop — binding-gate prototype (Shuffled, INN-130).
 
-Tests the design's load-bearing assumption: that a lexicon-binding rule
-(every emitted word must bind to a lexical entry) catches confabulations
-without quarantining legitimate speech.
+STATUS (2026-10-17 merge): SUPERSEDED by bind.py as the canonical binder.
+Kept intact as the historical record — this was the first executed test of
+the load-bearing assumption (Oct-13 strict transcript). Do not extend;
+extend bind.py instead.
 
-Method: bind every word of his actual talk-to-text transcripts against a
-two-tier lexicon (standard English + personal addendum). Score against
-DOCUMENTED confabulations in the record.
+Original purpose: test the design's load-bearing assumption — that a
+lexicon-binding rule (every emitted word must bind to a lexical entry)
+catches confabulations without quarantining legitimate speech — by
+binding every word of his actual talk-to-text transcripts against a
+two-tier lexicon and scoring against DOCUMENTED confabulations.
 
 [EXECUTED] on the Oct-13 strict transcript.
 """

@@ -30,6 +30,41 @@ LEXDIR = os.path.join(HERE, "lexicon")
 GLOBAL_LEX = os.path.join(LEXDIR, "words_alpha.txt")
 PERSONAL_LEX = os.path.join(LEXDIR, "personal_lexicon.txt")
 QLOG = os.path.join(LEXDIR, "quarantine_log.jsonl")
+PLOG = os.path.join(LEXDIR, "promotion_log.jsonl")  # alteration record: every Tier-2 add/remove
+
+
+def load_verified_personal():
+    """Active Tier-2 set under the write-quarantine rule:
+    binding passes iff entry exists AND (seed OR verified).
+    Revocations are tombstones: active = promoted/seed minus revoked.
+    Phone-home-sourced entries with verified=False satisfy NOTHING."""
+    active = {}  # word -> (verified, oov_class)
+    if os.path.exists(PLOG):
+        with open(PLOG, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                r = json.loads(line)
+                w = r["word"]
+                if r["action"] == "revoked":
+                    active.pop(w, None)
+                elif r["action"] in ("promoted", "seed"):
+                    # seed batch: verified by construction (bootstrap-seed)
+                    verified = True if r["action"] == "seed" else bool(r.get("verified", False))
+                    # operator-confirmed promotions are human-verified
+                    if r.get("by") == "operator" and r["action"] == "promoted":
+                        verified = True
+                    active[w] = (verified, r.get("oov_class", "unresolved"))
+    # words in personal_lexicon.txt with no log entry: legacy, treat as seed
+    try:
+        txt_words = load_words(PERSONAL_LEX)
+    except FileNotFoundError:
+        txt_words = set()
+    for w in txt_words:
+        if w not in active:
+            active[w] = (True, "unresolved")  # legacy seed, flagged unresolved
+    return {w for w, (v, _) in active.items() if v}
 
 
 def load_words(path):
@@ -204,7 +239,12 @@ def apply_verdict(rec, verdict, correction=None, operator_s=None):
     if correction:
         rec["correction"] = correction
     if verdict == "confirmed":
-        promote(rec["word"])
+        # Operator confirmation: human-verified novelty. This is the only
+        # ground truth in the loop; it both verifies and classifies.
+        promote(rec["word"], by="operator",
+                source=f"quarantine {rec['ts'][:16]}Z ({rec.get('mode','?')} mode)",
+                note=f"context: {rec['context'][:100]}",
+                oov_class="novelty", verified=True)
     rewrite_qlog(rec)
 
 
@@ -258,15 +298,76 @@ def prompt_verdict(rec):
         print("  c / f / r / u / s, or type the correction directly")
 
 
-def promote(word):
+OOV_CLASSES = ("unresolved", "novelty", "confabulation")
+
+
+def log_promotion(word, action, by, source, note="", oov_class="unresolved", verified=False):
+    """Alteration record: every Tier-2 add/remove carries who/when/source.
+    Diagnosability rule (operator, 2026-10-17): if something breaks, the trail shows why.
+    Write-quarantine rule (ears lexicon.py): phone-home-sourced entries enter
+    verified=False and satisfy NOTHING until a human (or second independent
+    listener) verifies. oov_class is Shuffled's ternary: novelty vs confabulation
+    vs unresolved — first-class, not emergent."""
+    if oov_class not in OOV_CLASSES:
+        raise ValueError(f"oov_class must be one of {OOV_CLASSES}")
+    rec = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "word": word,
+        "action": action,  # promoted | revoked | seed
+        "by": by,
+        "source": source,  # what audio/transcript + what verdict confirmed it
+        "note": note,
+        "oov_class": oov_class,
+        "verified": verified,
+    }
+    with open(PLOG, "a", encoding="utf-8") as f:
+        f.write(json.dumps(rec) + "\n")
+    return rec
+
+
+def promote(word, by=None, source=None, note="", oov_class="unresolved", verified=False):
     word = word.strip().lower()
+    if not by or not source:
+        print("promotion requires --by WHO and --source WHAT (verdict trail is mandatory)")
+        print("example: bind.py --promote gronk --by operator --source 'quarantine 2026-10-17, confirmed in review'")
+        return False
+    # Write-quarantine rule: human-confirmed => verified=True.
+    # Phone-home-sourced promotions must pass verified=False explicitly.
+    if by == "operator" and oov_class == "unresolved":
+        pass  # operator verdict without classification: allowed, flagged unresolved
     pers = load_words(PERSONAL_LEX)
     if word in pers:
         print(f"already in personal lexicon: {word}")
-        return
+        return False
     with open(PERSONAL_LEX, "a", encoding="utf-8") as f:
         f.write(word + "\n")
-    print(f"promoted to personal lexicon: {word}")
+    log_promotion(word, "promoted", by, source, note, oov_class, verified)
+    print(f"promoted to personal lexicon: {word}  [by {by}, src: {source}, "
+          f"oov={oov_class}, verified={verified}]")
+    return True
+
+
+def revoke(word, by=None, reason=""):
+    """Revocation path: remove from Tier 2, keep the trail."""
+    word = word.strip().lower()
+    if not by or not reason:
+        print("revocation requires --by WHO and --reason WHY")
+        return False
+    pers = load_words(PERSONAL_LEX)
+    if word not in pers:
+        print(f"not in personal lexicon: {word}")
+        return False
+    with open(PERSONAL_LEX, encoding="utf-8") as f:
+        raw = f.readlines()
+    with open(PERSONAL_LEX, "w", encoding="utf-8") as f:
+        for line in raw:
+            s = line.strip().lower()
+            if s and not s.startswith("#") and s == word:
+                continue  # drop the revoked entry, keep comments + everything else
+            f.write(line)
+    log_promotion(word, "revoked", by, reason)
+    print(f"revoked from personal lexicon: {word}  [by {by}, reason: {reason}]")
+    return True
 
 
 def print_report():
@@ -326,6 +427,20 @@ def print_report():
         print(f"\ncross-mode agreement: {agree}/{len(both)} words")
 
 
+def show_plog():
+    if not os.path.exists(PLOG):
+        print("no lexicon alterations recorded yet")
+        return
+    try:
+        with open(PLOG, encoding="utf-8") as f:
+            for line in f:
+                rec = json.loads(line)
+                print(f"[{rec['action']:8s}] {rec['word']:22s} {rec['ts'][:16]}  "
+                      f"by={rec['by']}  src={rec['source']}" + (f"  note={rec['note']}" if rec.get("note") else ""))
+    except BrokenPipeError:
+        pass
+
+
 def show_qlog():
     if not os.path.exists(QLOG):
         print("no quarantines logged yet")
@@ -340,7 +455,19 @@ def main():
     ap = argparse.ArgumentParser(description="VI loop tiered binder (INN-130 prototype)")
     ap.add_argument("transcript", nargs="?", help="text file to bind")
     ap.add_argument("--json", action="store_true", help="emit quarantine log as JSON")
-    ap.add_argument("--promote", metavar="WORD", help="confirm word -> personal lexicon")
+    ap.add_argument("--promote", metavar="WORD", help="confirm word -> personal lexicon (requires --by, --source)")
+    ap.add_argument("--revoke", metavar="WORD", help="remove word from personal lexicon (requires --by, --reason)")
+    ap.add_argument("--by", metavar="WHO", default=None, help="who confirmed/revoked (verdict trail)")
+    ap.add_argument("--source", metavar="WHAT", default=None, help="what audio/transcript + verdict confirmed it")
+    ap.add_argument("--reason", metavar="WHY", default=None, help="why revoked")
+    ap.add_argument("--note", default="", help="extra note for the promotion record")
+    ap.add_argument("--oov-class", choices=["unresolved", "novelty", "confabulation"],
+                    default="unresolved",
+                    help="Shuffled's ternary: is this word a genuine novelty or a confabulation?")
+    ap.add_argument("--verified", action="store_true",
+                    help="mark promotion as human/second-listener verified "
+                         "(phone-home-sourced entries default unverified and bind nothing)")
+    ap.add_argument("--promotion-log", action="store_true", help="show lexicon alteration records")
     ap.add_argument("--quarantine-log", action="store_true", help="show pending quarantines")
     ap.add_argument("--no-log", action="store_true", help="don't append to quarantine log")
     ap.add_argument("--mode", choices=["batch", "interrupt"], default="batch",
@@ -355,14 +482,21 @@ def main():
         return
 
     if args.promote:
-        promote(args.promote)
+        promote(args.promote, by=args.by, source=args.source, note=args.note,
+                oov_class=args.oov_class, verified=args.verified)
+        return
+    if args.revoke:
+        revoke(args.revoke, by=args.by, reason=args.reason)
+        return
+    if args.promotion_log:
+        show_plog()
         return
     if args.quarantine_log:
         show_qlog()
         return
 
     glob = load_words(GLOBAL_LEX)
-    pers = load_words(PERSONAL_LEX)
+    pers_verified = load_verified_personal()  # binding uses verified set only
 
     if args.transcript:
         with open(args.transcript, encoding="utf-8", errors="replace") as f:
@@ -372,7 +506,7 @@ def main():
         text = sys.stdin.read()
         source = "<stdin>"
 
-    tokens, results = bind_text(text, glob, pers, source)
+    tokens, results = bind_text(text, glob, pers_verified, source)
     q = report(tokens, results, source)
     if q and not args.no_log:
         recs = log_quarantines(q, tokens, results, source, mode=args.mode)
