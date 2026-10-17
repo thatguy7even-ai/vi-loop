@@ -1,0 +1,106 @@
+# Personal lexicon — operator's vocabulary (Tier 2).
+# One entry per line, lowercase. Multi-word entries use spaces.
+# Grows by confirmation: quarantined words he confirms get appended here.
+# Seed: 2026-10-17, from council record of his actual usage.
+
+gronk
+dakota
+higgins
+demis
+hassabis
+pixel capsule
+pixelcapsule
+shunt firewall
+shunt
+ecu
+talk to text
+talktotext
+talk-to-text
+key bind
+keybind
+key-binds
+mouth
+mouths
+scribe
+relay
+daughter
+daughters
+council
+linear
+tiktok
+tiktoks
+meta
+openai
+anthropic
+neuralink
+interpretability
+perfusion
+honeycomb
+tsv
+tsvs
+whisper
+faster-whisper
+fasterwhisper
+yt-dlp
+ytdlp
+said vs saved
+said-vs-saved
+provenance
+append only
+append-only
+dyad
+dyads
+formation audit
+formation-audit
+linguistic programming
+edge distributed
+edge-distributed
+brain scan
+brain scans
+inception layer
+inception
+crucible
+chrono
+softmax
+siphon
+ingress guard
+ingress
+chronological overlay
+velocity matrix
+binary signal matrix
+late context pipeline
+late-context
+quarantine
+phone home
+phone-home
+vi
+ears
+on-device
+oov
+out of vocabulary
+lexicon
+lexical
+bind
+binding
+bound
+unbound
+confabulation
+confabulate
+huggingface
+huggingface_hub
+no_proxy
+venv
+int8
+bestaudio
+transcribe
+transcription
+dictation
+talk-to-text
+meme
+onboarding
+github
+repo
+lifecycles
+deconstruction
+deconstruct
+underdetermines
