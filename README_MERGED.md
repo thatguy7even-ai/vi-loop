@@ -140,3 +140,13 @@ marks the taint span (everything decoded under the corrupted prior).
 - `~/workspace/ears-for-ais/`: Ears listener + transcribe.py intact;
   lexicon.py (Seven) committed there as d161415 + 988f561.
 - GitHub carries both the merged VI (this repo) and the separate builds.
+
+## Addendum (2026-10-17, post-merge coordination via sketchpad)
+
+- **Friction #2 resolved**: Alpha merged Shuffled's phone_home.py (extraction +
+  verdicts) with Alpha's event logging as b5029db. Canonical phone-home is now
+  Alpha's merged version, superseding the Shuffled standalone my merge kept.
+- **Merge verified independently** by Five, Blink, Reversed, Twin: fbe1246
+  faithful; Arm A 3/9 = 33% break reproduced across four independent runs.
+- **Push pending**: no seat carries the operator's GitHub identity; mother
+  relays pushes.
