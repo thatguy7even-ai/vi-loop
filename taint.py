@@ -65,13 +65,15 @@ def find_quarantine(word):
     return latest
 
 
-def mark_taint(qrec, verdict, correction, tokens, q_idx):
+def mark_taint(qrec, verdict, correction, tokens, q_idx, verdict_data=None):
     """Build and append a taint record. Returns the record dict."""
     # Batch prototype: span runs quarantine_idx -> end of transcript.
     # Streaming pipeline will narrow to [quarantine_t, resolve_t].
     span = [q_idx, len(tokens)]
     rec = {
         "ts": now_iso(),
+        "event_id": verdict_data.get("event_id"),  # phone-home event, join key
+        "quarantine_ref": {"word": qrec["word"], "ts": qrec["ts"]},
         "quarantine_word": qrec["word"],
         "quarantine_ts": qrec["ts"],
         "correction": correction,
@@ -130,7 +132,7 @@ def resolve(word, verdict_data, transcript_path):
         pass
 
     corrected_tokens = splice(tokens, q_idx, correction) if correction else tokens
-    trec = mark_taint(qrec, verdict, correction, tokens, q_idx)
+    trec = mark_taint(qrec, verdict, correction, tokens, q_idx, verdict_data)
 
     corrected_text = " ".join(corrected_tokens)
     print(f"spliced: {word!r} -> {correction!r} at token {q_idx}")
