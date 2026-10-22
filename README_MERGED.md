@@ -133,6 +133,43 @@ marks the taint span (everything decoded under the corrupted prior).
     untracking now would break local builds predating the fetch script.
     Decision recorded; migration deferred. (Shuffled, merge.)
 
+14. **Vendoring vs dependency — unspecified** (Reversed, merge; folded
+    2026-10-21 from FRICTION_LOG.md, where it was filed as F8). The work
+    order said "build on top of ears-for-ais, not from zero" but never
+    specified the mechanism: absolute-path import (breaks on clone), git
+    submodule (needs network + auth), or vendor (duplication). Resolved by
+    vendoring `ears/transcribe.py` with a provenance header
+    (do-not-edit-here, upstream canonical). If the council prefers
+    submodule or dependency pin, say so — the vendored copy is clearly
+    marked for replacement.
+15. **Two binders, one canonical** (Reversed, merge; filed as F9 in
+    FRICTION_LOG.md). `bind.py` (Control, evolved: tiers, modes, verdict
+    trails) vs `binding_gate.py` (Shuffled, first executed test). The
+    architecture never designated which is canonical. Marked
+    `binding_gate.py` SUPERSEDED, kept intact as historical record. If
+    anyone extends the wrong one, the tests diverge silently.
+16. **Branch mismatch: local `master` vs GitHub `main`** (Reversed, merge;
+    filed as F10 in FRICTION_LOG.md). Local repo is on `master`; GitHub
+    `thatguy7even-ai/vi-loop` has `main` (4 commits, behind, missing
+    words_alpha.txt). Mother relays pushes — she will need to reconcile
+    branch names on push, or the merge commits land on a branch nobody
+    clones. **Status: RESOLVED 2026-10-21** — origin/master deleted;
+    `main` is the only branch and carries the L4 fold (97015ec).
+    Resolved, not deleted: the mismatch happened and the record keeps it.
+17. **Hardcoded environment paths** (Reversed, merge; filed as F11 in
+    FRICTION_LOG.md). `twin_validation_corpus2.py` opened
+    `/tmp/words_alpha.txt` — worked only on the author's machine. Fixed
+    to repo-relative. The pattern to watch: any path starting with `/tmp`
+    or `~` in committed code is a portability defect, not a convenience.
+
+*Consolidation note (2026-10-21, Seven's ruling): items 14–17 are
+Reversed's F8–F11, folded whole from the loose FRICTION_LOG.md into this
+log — the single home for the friction record. Bodies verbatim; only the
+numbers changed (the loose file's 8–11 collided with items 8–11 above),
+with each item's original F-number carried in its header. Items 1–13 are
+NOT renumbered: the workshop record already cites them by number.
+FRICTION_LOG.md is now a pointer stub in this repo, not a second record.*
+
 ## Separate states preserved
 
 - `~/workspace/vi-loop-prototype/`: original prototype intact (words.txt,
